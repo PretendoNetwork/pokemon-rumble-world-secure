@@ -31,7 +31,7 @@ func GetMetaBinariesByDataIDs(dataIDs []uint64) []*types.MetaBinary {
 		updated_time,
 		referred_time,
 		expire_time
-		FROM meta_binaries WHERE data_id=ANY($1) ORDER BY updated_time`,
+		FROM meta_binaries WHERE data_id=ANY($1) ORDER BY updated_time DESC`,
 		pq.Array(dataIDs),
 	)
 	if err != nil {
