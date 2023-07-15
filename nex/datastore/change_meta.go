@@ -6,9 +6,10 @@ import (
 
 	"github.com/PretendoNetwork/nex-go"
 	"github.com/PretendoNetwork/nex-protocols-go/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
 )
 
-func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore.DataStoreChangeMetaParam) {
+func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreChangeMetaParam) {
 	// TODO - Check error
 	_ = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
 

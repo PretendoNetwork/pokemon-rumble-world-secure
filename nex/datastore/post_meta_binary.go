@@ -3,11 +3,12 @@ package nex_datastore
 import (
 	"github.com/PretendoNetwork/nex-go"
 	"github.com/PretendoNetwork/nex-protocols-go/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world-secure/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
 )
 
-func PostMetaBinary(err error, client *nex.Client, callID uint32, param *datastore.DataStorePreparePostParam) {
+func PostMetaBinary(err error, client *nex.Client, callID uint32, param *datastore_types.DataStorePreparePostParam) {
 	metaBinary := database.GetMetaInfoByOwnerPID(client.PID())
 
 	if metaBinary.DataID != 0 {

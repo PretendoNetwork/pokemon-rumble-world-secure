@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
 	"github.com/PretendoNetwork/pokemon-rumble-world-secure/types"
 	"github.com/lib/pq"
 )
 
-func GetMetaInfosByDataStoreSearchParam(param *datastore.DataStoreSearchParam) []*types.MetaBinary {
+func GetMetaInfosByDataStoreSearchParam(param *datastore_types.DataStoreSearchParam) []*types.MetaBinary {
 	metaBinaries := make([]*types.MetaBinary, 0, param.ResultRange.Length)
 
 	rows, err := Postgres.Query(`
