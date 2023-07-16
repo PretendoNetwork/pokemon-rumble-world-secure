@@ -4,7 +4,6 @@ import (
 	"time"
 
 	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
 	"github.com/lib/pq"
 )
 
@@ -30,10 +29,6 @@ func UpdateMetaBinaryByDataStoreChangeMetaParam(dataStoreChangeMetaParam *datast
 		now,
 		uint32(dataStoreChangeMetaParam.DataID),
 	)
-	if err != nil {
-		globals.Logger.Critical(err.Error())
-		return err
-	}
 
-	return nil
+	return err
 }

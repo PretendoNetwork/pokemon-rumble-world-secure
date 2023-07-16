@@ -6,8 +6,8 @@ import (
 
 	"github.com/PretendoNetwork/nex-go"
 	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/types"
+	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
+	"github.com/PretendoNetwork/pokemon-rumble-world/types"
 	"github.com/lib/pq"
 )
 

@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
+	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 )
 
 func DeleteMetaBinaryByDataID(dataID uint32) error {

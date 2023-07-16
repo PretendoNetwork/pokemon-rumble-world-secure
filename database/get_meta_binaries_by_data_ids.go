@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/types"
+	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
+	"github.com/PretendoNetwork/pokemon-rumble-world/types"
 	"github.com/lib/pq"
 )
 

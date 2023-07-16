@@ -1,8 +1,8 @@
 package nex_datastore
 
 import (
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/database"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
+	"github.com/PretendoNetwork/pokemon-rumble-world/database"
+	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
 	"github.com/PretendoNetwork/nex-go"
 	"github.com/PretendoNetwork/nex-protocols-go/datastore"
@@ -10,11 +10,22 @@ import (
 )
 
 func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreChangeMetaParam) {
-	// TODO - Check error
-	_ = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
-
 	rmcResponse := nex.NewRMCResponse(datastore.ProtocolID, callID)
-	rmcResponse.SetSuccess(datastore.MethodChangeMeta, nil)
+
+	if err != nil {
+		globals.Logger.Error(err.Error())
+		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
+	} else {
+		err = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
+		if err != nil {
+			globals.Logger.Error(err.Error())
+			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
+		}
+	}
+
+	if err == nil {
+		rmcResponse.SetSuccess(datastore.MethodChangeMeta, nil)
+	}
 
 	rmcResponseBytes := rmcResponse.Bytes()
 
@@ -29,5 +40,5 @@ func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore_t
 	responsePacket.AddFlag(nex.FlagNeedsAck)
 	responsePacket.AddFlag(nex.FlagReliable)
 
-	globals.NEXServer.Send(responsePacket)
+	globals.SecureServer.Send(responsePacket)
 }

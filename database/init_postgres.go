@@ -1,6 +1,6 @@
 package database
 
-import "github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
+import "github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
 func initPostgres() {
 	var err error

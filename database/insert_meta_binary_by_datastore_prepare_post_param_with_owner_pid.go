@@ -4,11 +4,10 @@ import (
 	"time"
 
 	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
-	"github.com/PretendoNetwork/pokemon-rumble-world-secure/globals"
 	"github.com/lib/pq"
 )
 
-func InsertMetaBinaryByDataStorePreparePostParamWithOwnerPID(dataStorePreparePostParam *datastore_types.DataStorePreparePostParam, pid uint32) uint32 {
+func InsertMetaBinaryByDataStorePreparePostParamWithOwnerPID(dataStorePreparePostParam *datastore_types.DataStorePreparePostParam, pid uint32) (uint32, error) {
 	var dataID uint32
 
 	now := time.Now().Unix()
@@ -49,9 +48,6 @@ func InsertMetaBinaryByDataStorePreparePostParamWithOwnerPID(dataStorePreparePos
 		now,
 		expireTime,
 	).Scan(&dataID)
-	if err != nil {
-		globals.Logger.Critical(err.Error())
-	}
 
-	return dataID
+	return dataID, err
 }
