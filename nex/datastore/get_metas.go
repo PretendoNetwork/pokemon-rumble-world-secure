@@ -14,9 +14,7 @@ func GetMetas(err error, client *nex.Client, callID uint32, dataIDs []uint64, pa
 	if err != nil {
 		globals.Logger.Error(err.Error())
 		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	}
-
-	if err == nil {
+	} else {
 		metaBinaries := database.GetMetaBinariesByDataIDs(dataIDs)
 
 		pMetaInfo := make([]*datastore_types.DataStoreMetaInfo, 0, len(metaBinaries))

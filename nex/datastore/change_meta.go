@@ -15,15 +15,18 @@ func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore_t
 	if err != nil {
 		globals.Logger.Error(err.Error())
 		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	} else {
-		err = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
-		if err != nil {
-			globals.Logger.Error(err.Error())
+	}
+
+	var updateErr error
+	if err == nil {
+		updateErr = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
+		if updateErr != nil {
+			globals.Logger.Error(updateErr.Error())
 			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
 		}
 	}
 
-	if err == nil {
+	if err == nil && updateErr == nil {
 		rmcResponse.SetSuccess(datastore.MethodChangeMeta, nil)
 	}
 

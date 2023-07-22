@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
-	pb "github.com/PretendoNetwork/grpc-go/account"
+	pb_account "github.com/PretendoNetwork/grpc-go/account"
+	pb_friends "github.com/PretendoNetwork/grpc-go/friends"
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 	"github.com/PretendoNetwork/plogger-go"
@@ -14,6 +16,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func init() {
@@ -31,9 +37,19 @@ func init() {
 	authenticationServerPort := os.Getenv("PN_PRW_AUTHENTICATION_SERVER_PORT")
 	secureServerHost := os.Getenv("PN_PRW_SECURE_SERVER_HOST")
 	secureServerPort := os.Getenv("PN_PRW_SECURE_SERVER_PORT")
+	hppServerHost := os.Getenv("PN_PRW_HPP_SERVER_HOST")
+	hppServerPort := os.Getenv("PN_PRW_HPP_SERVER_PORT")
 	accountGRPCHost := os.Getenv("PN_PRW_ACCOUNT_GRPC_HOST")
 	accountGRPCPort := os.Getenv("PN_PRW_ACCOUNT_GRPC_PORT")
 	accountGRPCAPIKey := os.Getenv("PN_PRW_ACCOUNT_GRPC_API_KEY")
+	friendsGRPCHost := os.Getenv("PN_PRW_FRIENDS_GRPC_HOST")
+	friendsGRPCPort := os.Getenv("PN_PRW_FRIENDS_GRPC_PORT")
+	friendsGRPCAPIKey := os.Getenv("PN_PRW_FRIENDS_GRPC_API_KEY")
+	s3Endpoint := os.Getenv("PN_PRW_S3_ENDPOINT")
+	s3Region := os.Getenv("PN_PRW_S3_REGION")
+	s3AccessKey := os.Getenv("PN_PRW_S3_ACCESS_KEY")
+	s3AccessSecret := os.Getenv("PN_PRW_S3_ACCESS_SECRET")
+	s3Bucket := os.Getenv("PN_PRW_S3_BUCKET")
 
 	if strings.TrimSpace(postgresURI) == "" {
 		globals.Logger.Error("PN_PRW_POSTGRES_URI environment variable not set")
@@ -77,6 +93,24 @@ func init() {
 		os.Exit(0)
 	}
 
+	if strings.TrimSpace(hppServerHost) == "" {
+		globals.Logger.Error("PN_PRW_HPP_SERVER_HOST environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(hppServerPort) == "" {
+		globals.Logger.Error("PN_PRW_HPP_SERVER_PORT environment variable not set")
+		os.Exit(0)
+	}
+
+	if port, err := strconv.Atoi(hppServerPort); err != nil {
+		globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
+		os.Exit(0)
+	} else if port < 0 || port > 65535 {
+		globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
+		os.Exit(0)
+	}
+
 	if strings.TrimSpace(accountGRPCHost) == "" {
 		globals.Logger.Error("PN_PRW_ACCOUNT_GRPC_HOST environment variable not set")
 		os.Exit(0)
@@ -105,10 +139,93 @@ func init() {
 		os.Exit(0)
 	}
 
-	globals.GRPCAccountClient = pb.NewAccountClient(globals.GRPCAccountClientConnection)
+	globals.GRPCAccountClient = pb_account.NewAccountClient(globals.GRPCAccountClientConnection)
 	globals.GRPCAccountCommonMetadata = metadata.Pairs(
 		"X-API-Key", accountGRPCAPIKey,
 	)
+
+	if strings.TrimSpace(friendsGRPCHost) == "" {
+		globals.Logger.Error("PN_PRW_FRIENDS_GRPC_HOST environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(friendsGRPCPort) == "" {
+		globals.Logger.Error("PN_PRW_FRIENDS_GRPC_PORT environment variable not set")
+		os.Exit(0)
+	}
+
+	if port, err := strconv.Atoi(friendsGRPCPort); err != nil {
+		globals.Logger.Errorf("PN_PRW_FRIENDS_GRPC_PORT is not a valid port. Expected 0-65535, got %s", friendsGRPCPort)
+		os.Exit(0)
+	} else if port < 0 || port > 65535 {
+		globals.Logger.Errorf("PN_PRW_FRIENDS_GRPC_PORT is not a valid port. Expected 0-65535, got %s", friendsGRPCPort)
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(friendsGRPCAPIKey) == "" {
+		globals.Logger.Warning("Insecure gRPC server detected. PN_PRW_FRIENDS_GRPC_API_KEY environment variable not set")
+	}
+
+	globals.GRPCFriendsClientConnection, err = grpc.Dial(fmt.Sprintf("%s:%s", friendsGRPCHost, friendsGRPCPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		globals.Logger.Criticalf("Failed to connect to friends gRPC server: %v", err)
+		os.Exit(0)
+	}
+
+	globals.GRPCFriendsClient = pb_friends.NewFriendsClient(globals.GRPCFriendsClientConnection)
+	globals.GRPCFriendsCommonMetadata = metadata.Pairs(
+		"X-API-Key", friendsGRPCAPIKey,
+	)
+
+	if strings.TrimSpace(s3Endpoint) == "" {
+		globals.Logger.Error("PN_PRW_S3_ENDPOINT environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(s3Region) == "" {
+		globals.Logger.Error("PN_PRW_S3_REGION environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(s3AccessKey) == "" {
+		globals.Logger.Error("PN_PRW_S3_ACCESS_KEY environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(s3AccessSecret) == "" {
+		globals.Logger.Error("PN_PRW_S3_ACCESS_SECRET environment variable not set")
+		os.Exit(0)
+	}
+
+	if strings.TrimSpace(s3Bucket) == "" {
+		globals.Logger.Error("PN_PRW_S3_BUCKET environment variable not set")
+		os.Exit(0)
+	}
+
+	staticCredentials := credentials.NewStaticCredentialsProvider(s3AccessKey, s3AccessSecret, "")
+
+	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL: s3Endpoint,
+			SigningRegion: s3Region,
+		}, nil
+	})
+
+	cfg, err := config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithRegion(s3Region),
+		config.WithCredentialsProvider(staticCredentials),
+		config.WithEndpointResolverWithOptions(endpointResolver),
+	)
+
+	if err != nil {
+		globals.Logger.Criticalf("Failed to create S3 config: %v", err)
+		os.Exit(0)
+	}
+
+	globals.S3Client = s3.NewFromConfig(cfg)
+	globals.S3PresignClient = s3.NewPresignClient(globals.S3Client)
+	globals.S3PresignPostClient = globals.NewPresignClient(cfg)
 
 	database.ConnectPostgres()
 }

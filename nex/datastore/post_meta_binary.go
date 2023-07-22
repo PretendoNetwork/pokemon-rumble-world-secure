@@ -16,24 +16,28 @@ func PostMetaBinary(err error, client *nex.Client, callID uint32, param *datasto
 		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
 	}
 
-	metaBinary := database.GetMetaInfoByOwnerPID(client.PID())
+	var dataID uint32
+	var insertErr error
+	if err == nil {
+		metaBinary := database.GetMetaInfoByOwnerPID(client.PID())
 
-	if metaBinary.DataID != 0 {
-		// * Meta binary already exists
-		if param.PersistenceInitParam.DeleteLastObject {
-			// * Delete existing object before uploading new one
-			// TODO - Check error
-			_ = database.DeleteMetaBinaryByDataID(metaBinary.DataID)
+		if metaBinary.DataID != 0 {
+			// * Meta binary already exists
+			if param.PersistenceInitParam.DeleteLastObject {
+				// * Delete existing object before uploading new one
+				// TODO - Check error
+				_ = database.DeleteMetaBinaryByDataID(metaBinary.DataID)
+			}
+		}
+
+		dataID, insertErr = database.InsertMetaBinaryByDataStorePreparePostParamWithOwnerPID(param, client.PID())
+		if insertErr != nil {
+			globals.Logger.Error(insertErr.Error())
+			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
 		}
 	}
 
-	dataID, err := database.InsertMetaBinaryByDataStorePreparePostParamWithOwnerPID(param, client.PID())
-	if err != nil {
-		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	}
-
-	if err == nil {
+	if err == nil && insertErr == nil {
 		rmcResponseStream := nex.NewStreamOut(globals.SecureServer)
 
 		rmcResponseStream.WriteUInt64LE(uint64(dataID))
