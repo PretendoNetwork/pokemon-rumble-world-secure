@@ -4,34 +4,37 @@ import (
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 )
 
-func GetSpecificMetaV1(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreGetSpecificMetaParamV1) {
-	rmcResponse := nex.NewRMCResponse(0, callID)
-
+func GetSpecificMetaV1(err error, packet nex.PacketInterface, callID uint32, param datastore_types.DataStoreGetSpecificMetaParamV1) (*nex.RMCMessage, *nex.Error) {
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	} else {
-		pMetaInfos := database.GetNotificationMetasByDataIDs(param.DataIDs)
-
-		rmcResponseStream := nex.NewStreamOut(globals.HPPServer)
-
-		rmcResponseStream.WriteListStructure(pMetaInfos)
-
-		rmcResponseBody := rmcResponseStream.Bytes()
-
-		rmcResponse.SetSuccess(datastore.MethodGetSpecificMetaV1, rmcResponseBody)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
 	}
 
-	rmcResponseBytes := rmcResponse.Bytes()
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
 
-	responsePacket, _ := nex.NewHPPPacket(client, nil)
+	rawDataIDs := make([]uint32, len(param.DataIDs))
+	for i, dataID := range param.DataIDs {
+		rawDataIDs[i] = uint32(dataID)
+	}
 
-	responsePacket.SetPayload(rmcResponseBytes)
+	pMetaInfos := database.GetNotificationMetasByDataIDs(rawDataIDs)
 
-	globals.HPPServer.Send(responsePacket)
+	rmcResponseStream := nex.NewByteStreamOut(globals.HPPServer.LibraryVersions(), globals.HPPServer.ByteStreamSettings())
+
+	pMetaInfos.WriteTo(rmcResponseStream)
+
+	rmcResponseBody := rmcResponseStream.Bytes()
+
+	rmcResponse := nex.NewRMCSuccess(endpoint, rmcResponseBody)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodGetSpecificMetaV1
+	rmcResponse.CallID = callID
+
+	return rmcResponse, nil
 }

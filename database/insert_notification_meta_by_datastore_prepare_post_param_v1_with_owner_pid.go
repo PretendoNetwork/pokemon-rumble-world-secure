@@ -3,15 +3,20 @@ package database
 import (
 	"time"
 
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/lib/pq"
 )
 
-func InsertNotificationMetaByDataStorePreparePostParamV1WithOwnerPID(dataStorePreparePostParam *datastore_types.DataStorePreparePostParamV1, pid uint32) (uint32, error) {
+func InsertNotificationMetaByDataStorePreparePostParamV1WithOwnerPID(dataStorePreparePostParam datastore_types.DataStorePreparePostParamV1, pid uint32) (uint32, error) {
 	var dataID uint32
 
 	now := time.Now().Unix()
 	expireTime := time.Date(9999, time.December, 31, 0, 0, 0, 0, time.UTC).Unix()
+
+	tags := make([]string, len(dataStorePreparePostParam.Tags))
+	for i, tag := range dataStorePreparePostParam.Tags {
+		tags[i] = string(tag)
+	}
 
 	err := Postgres.QueryRow(`
 		INSERT INTO notification_metas (
@@ -36,7 +41,7 @@ func InsertNotificationMetaByDataStorePreparePostParamV1WithOwnerPID(dataStorePr
 		dataStorePreparePostParam.DelPermission.Permission,
 		dataStorePreparePostParam.Flag,
 		dataStorePreparePostParam.Period,
-		pq.Array(dataStorePreparePostParam.Tags),
+		pq.Array(tags),
 		now,
 		now,
 		now,

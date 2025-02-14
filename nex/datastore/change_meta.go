@@ -4,44 +4,30 @@ import (
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 )
 
-func ChangeMeta(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreChangeMetaParam) {
-	rmcResponse := nex.NewRMCResponse(datastore.ProtocolID, callID)
-
+func ChangeMeta(err error, packet nex.PacketInterface, callID uint32, param datastore_types.DataStoreChangeMetaParam) (*nex.RMCMessage, *nex.Error) {
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
 	}
 
-	var updateErr error
-	if err == nil {
-		updateErr = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
-		if updateErr != nil {
-			globals.Logger.Error(updateErr.Error())
-			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-		}
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
+
+	err = database.UpdateMetaBinaryByDataStoreChangeMetaParam(param)
+	if err != nil {
+		globals.Logger.Error(err.Error())
+		return nil, nex.NewError(nex.ResultCodes.DataStore.Unknown, err.Error())
 	}
 
-	if err == nil && updateErr == nil {
-		rmcResponse.SetSuccess(datastore.MethodChangeMeta, nil)
-	}
+	rmcResponse := nex.NewRMCSuccess(endpoint, nil)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodChangeMeta
+	rmcResponse.CallID = callID
 
-	rmcResponseBytes := rmcResponse.Bytes()
-
-	responsePacket, _ := nex.NewPacketV1(client, nil)
-
-	responsePacket.SetVersion(1)
-	responsePacket.SetSource(0xA1)
-	responsePacket.SetDestination(0xAF)
-	responsePacket.SetType(nex.DataPacket)
-	responsePacket.SetPayload(rmcResponseBytes)
-
-	responsePacket.AddFlag(nex.FlagNeedsAck)
-	responsePacket.AddFlag(nex.FlagReliable)
-
-	globals.SecureServer.Send(responsePacket)
+	return rmcResponse, nil
 }

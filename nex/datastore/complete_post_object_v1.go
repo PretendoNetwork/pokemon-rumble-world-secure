@@ -7,41 +7,37 @@ import (
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 )
 
-func CompletePostObjectV1(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreCompletePostParamV1) {
-	rmcResponse := nex.NewRMCResponse(0, callID)
-
-	var bucket string
-	var headRequestErr error
+func CompletePostObjectV1(err error, packet nex.PacketInterface, callID uint32, param datastore_types.DataStoreCompletePostParamV1) (*nex.RMCMessage, *nex.Error) {
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
 	}
 
-	if err == nil {
-		bucket = os.Getenv("PN_PRW_S3_BUCKET")
-		key := fmt.Sprintf("data/%011d", param.DataID)
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
 
-		_, headRequestErr = globals.S3HeadRequest(bucket, key)
-		if headRequestErr != nil {
-			globals.Logger.Error(headRequestErr.Error())
-			// * Report the error to the client if it isn't aware of it
-			if param.IsSuccess {
-				rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-			} else {
-				rmcResponse.SetSuccess(datastore.MethodCompletePostObjectV1, nil)
-			}
+	bucket := os.Getenv("PN_PRW_S3_BUCKET")
+	key := fmt.Sprintf("data/%011d", param.DataID)
+
+	_, err = globals.S3HeadRequest(bucket, key)
+	if err != nil {
+		globals.Logger.Error(err.Error())
+		// * Report the error to the client if it isn't aware of it
+		if param.IsSuccess {
+			return nil, nex.NewError(nex.ResultCodes.DataStore.Unknown, err.Error())
 		}
 	}
 
-	if err == nil && headRequestErr == nil {
-		friendList := globals.GetUserFriendPIDs(client.PID())
+	// * Only send notifications if we could confirm the object exists
+	if err == nil {
+		friendList := globals.GetUserFriendPIDs(uint32(connection.PID()))
 		for _, pid := range friendList {
-			notificationID, notificationErr := database.InsertNotificationByDataIDAndPID(param.DataID, pid)
+			notificationID, notificationErr := database.InsertNotificationByDataIDAndPID(uint32(param.DataID), pid)
 			if notificationErr != nil {
 				globals.Logger.Critical(notificationErr.Error())
 				continue
@@ -51,20 +47,17 @@ func CompletePostObjectV1(err error, client *nex.Client, callID uint32, param *d
 			notification := fmt.Sprintf("%d,%d,%d", notificationID, pid, 1425562994)
 			key := fmt.Sprintf("notify/%011d", pid)
 
-			_, putRequestErr := globals.S3PutRequest(bucket, key, notification)
-			if putRequestErr != nil {
-				globals.Logger.Critical(putRequestErr.Error())
+			_, err = globals.S3PutRequest(bucket, key, notification)
+			if err != nil {
+				globals.Logger.Critical(err.Error())
 			}
 		}
-
-		rmcResponse.SetSuccess(datastore.MethodCompletePostObjectV1, nil)
 	}
 
-	rmcResponseBytes := rmcResponse.Bytes()
+	rmcResponse := nex.NewRMCSuccess(endpoint, nil)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodCompletePostObjectV1
+	rmcResponse.CallID = callID
 
-	responsePacket, _ := nex.NewHPPPacket(client, nil)
-
-	responsePacket.SetPayload(rmcResponseBytes)
-
-	globals.HPPServer.Send(responsePacket)
+	return rmcResponse, nil
 }

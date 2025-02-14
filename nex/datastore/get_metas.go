@@ -1,81 +1,84 @@
 package nex_datastore
 
 import (
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	"github.com/PretendoNetwork/nex-go/v2/types"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 )
 
-func GetMetas(err error, client *nex.Client, callID uint32, dataIDs []uint64, param *datastore_types.DataStoreGetMetaParam) {
-	rmcResponse := nex.NewRMCResponse(datastore.ProtocolID, callID)
-
+func GetMetas(err error, packet nex.PacketInterface, callID uint32, dataIDs types.List[types.UInt64], param datastore_types.DataStoreGetMetaParam) (*nex.RMCMessage, *nex.Error) {
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	} else {
-		metaBinaries := database.GetMetaBinariesByDataIDs(dataIDs)
-
-		pMetaInfo := make([]*datastore_types.DataStoreMetaInfo, 0, len(metaBinaries))
-		pResults := make([]*nex.Result, 0, len(metaBinaries))
-
-		for i := 0; i < len(metaBinaries); i++ {
-			metaBinary := metaBinaries[i]
-			metaInfo := datastore_types.NewDataStoreMetaInfo()
-
-			metaInfo.DataID = uint64(metaBinary.DataID)
-			metaInfo.OwnerID = metaBinary.OwnerPID
-			metaInfo.Size = 0
-			metaInfo.Name = metaBinary.Name
-			metaInfo.DataType = metaBinary.DataType
-			metaInfo.MetaBinary = metaBinary.Buffer
-			metaInfo.Permission = datastore_types.NewDataStorePermission()
-			metaInfo.Permission.Permission = metaBinary.Permission
-			metaInfo.Permission.RecipientIDs = make([]uint32, 0)
-			metaInfo.DelPermission = datastore_types.NewDataStorePermission()
-			metaInfo.DelPermission.Permission = metaBinary.DeletePermission
-			metaInfo.DelPermission.RecipientIDs = make([]uint32, 0)
-			metaInfo.CreatedTime = metaBinary.CreationTime
-			metaInfo.UpdatedTime = metaBinary.UpdatedTime
-			metaInfo.Period = metaBinary.Period
-			metaInfo.Status = 0      // TODO - Figure this out
-			metaInfo.ReferredCnt = 0 // TODO - Figure this out
-			metaInfo.ReferDataID = 0 // TODO - Figure this out
-			metaInfo.Flag = metaBinary.Flag
-			metaInfo.ReferredTime = metaBinary.ReferredTime
-			metaInfo.ExpireTime = metaBinary.ExpireTime
-			metaInfo.Tags = metaBinary.Tags
-			metaInfo.Ratings = make([]*datastore_types.DataStoreRatingInfoWithSlot, 0)
-
-			pMetaInfo = append(pMetaInfo, metaInfo)
-
-			result := nex.NewResultSuccess(nex.Errors.DataStore.Unknown)
-			pResults = append(pResults, result)
-		}
-
-		rmcResponseStream := nex.NewStreamOut(globals.SecureServer)
-
-		rmcResponseStream.WriteListStructure(pMetaInfo)
-		rmcResponseStream.WriteListResult(pResults)
-
-		rmcResponseBody := rmcResponseStream.Bytes()
-
-		rmcResponse.SetSuccess(datastore.MethodGetMetas, rmcResponseBody)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
 	}
 
-	rmcResponseBytes := rmcResponse.Bytes()
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
 
-	responsePacket, _ := nex.NewPacketV1(client, nil)
+	rawDataIDs := make([]uint64, len(dataIDs))
+	for i, dataID := range dataIDs {
+		rawDataIDs[i] = uint64(dataID)
+	}
 
-	responsePacket.SetVersion(1)
-	responsePacket.SetSource(0xA1)
-	responsePacket.SetDestination(0xAF)
-	responsePacket.SetType(nex.DataPacket)
-	responsePacket.SetPayload(rmcResponseBytes)
+	metaBinaries := database.GetMetaBinariesByDataIDs(rawDataIDs)
 
-	responsePacket.AddFlag(nex.FlagNeedsAck)
-	responsePacket.AddFlag(nex.FlagReliable)
+	var pMetaInfo types.List[datastore_types.DataStoreMetaInfo] = make([]datastore_types.DataStoreMetaInfo, 0, len(metaBinaries))
+	var pResults types.List[types.QResult] = make([]types.QResult, 0, len(metaBinaries))
 
-	globals.SecureServer.Send(responsePacket)
+	for i := 0; i < len(metaBinaries); i++ {
+		metaBinary := metaBinaries[i]
+		metaInfo := datastore_types.NewDataStoreMetaInfo()
+
+		metaInfo.DataID = types.NewUInt64(uint64(metaBinary.DataID))
+		metaInfo.OwnerID = types.NewPID(uint64(metaBinary.OwnerPID))
+		metaInfo.Size = 0
+		metaInfo.Name = types.NewString(metaBinary.Name)
+		metaInfo.DataType = types.NewUInt16(metaBinary.DataType)
+		metaInfo.MetaBinary = metaBinary.Buffer
+		metaInfo.Permission = datastore_types.NewDataStorePermission()
+		metaInfo.Permission.Permission = types.NewUInt8(metaBinary.Permission)
+		metaInfo.Permission.RecipientIDs = make([]types.PID, 0)
+		metaInfo.DelPermission = datastore_types.NewDataStorePermission()
+		metaInfo.DelPermission.Permission = types.NewUInt8(metaBinary.DeletePermission)
+		metaInfo.DelPermission.RecipientIDs = make([]types.PID, 0)
+		metaInfo.CreatedTime = metaBinary.CreationTime
+		metaInfo.UpdatedTime = metaBinary.UpdatedTime
+		metaInfo.Period = types.NewUInt16(metaBinary.Period)
+		metaInfo.Status = 0      // TODO - Figure this out
+		metaInfo.ReferredCnt = 0 // TODO - Figure this out
+		metaInfo.ReferDataID = 0 // TODO - Figure this out
+		metaInfo.Flag = types.NewUInt32(metaBinary.Flag)
+		metaInfo.ReferredTime = metaBinary.ReferredTime
+		metaInfo.ExpireTime = metaBinary.ExpireTime
+
+		tags := make([]types.String, len(metaBinaries[i].Tags))
+		for j, tag := range metaBinaries[i].Tags {
+			tags[j] = types.NewString(tag)
+		}
+		metaInfo.Tags = tags
+
+		metaInfo.Ratings = make([]datastore_types.DataStoreRatingInfoWithSlot, 0)
+
+		pMetaInfo = append(pMetaInfo, metaInfo)
+
+		result := types.NewQResultSuccess(nex.ResultCodes.DataStore.Unknown)
+		pResults = append(pResults, result)
+	}
+
+	rmcResponseStream := nex.NewByteStreamOut(globals.SecureServer.LibraryVersions, globals.SecureServer.ByteStreamSettings)
+
+	pMetaInfo.WriteTo(rmcResponseStream)
+	pResults.WriteTo(rmcResponseStream)
+
+	rmcResponseBody := rmcResponseStream.Bytes()
+
+	rmcResponse := nex.NewRMCSuccess(endpoint, rmcResponseBody)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodGetMetas
+	rmcResponse.CallID = callID
+
+	return rmcResponse, nil
 }
