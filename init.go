@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	// "context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -15,10 +15,10 @@ import (
 	"github.com/PretendoNetwork/plogger-go"
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	// "github.com/aws/aws-sdk-go-v2/aws"
+	// "github.com/aws/aws-sdk-go-v2/config"
+	// "github.com/aws/aws-sdk-go-v2/credentials"
+	// "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -39,18 +39,18 @@ func init() {
 	authenticationServerPort := os.Getenv("PN_PRW_AUTHENTICATION_SERVER_PORT")
 	secureServerHost := os.Getenv("PN_PRW_SECURE_SERVER_HOST")
 	secureServerPort := os.Getenv("PN_PRW_SECURE_SERVER_PORT")
-	hppServerPort := os.Getenv("PN_PRW_HPP_SERVER_PORT")
+	// hppServerPort := os.Getenv("PN_PRW_HPP_SERVER_PORT")
 	accountGRPCHost := os.Getenv("PN_PRW_ACCOUNT_GRPC_HOST")
 	accountGRPCPort := os.Getenv("PN_PRW_ACCOUNT_GRPC_PORT")
 	accountGRPCAPIKey := os.Getenv("PN_PRW_ACCOUNT_GRPC_API_KEY")
 	friendsGRPCHost := os.Getenv("PN_PRW_FRIENDS_GRPC_HOST")
 	friendsGRPCPort := os.Getenv("PN_PRW_FRIENDS_GRPC_PORT")
 	friendsGRPCAPIKey := os.Getenv("PN_PRW_FRIENDS_GRPC_API_KEY")
-	s3Endpoint := os.Getenv("PN_PRW_S3_ENDPOINT")
-	s3Region := os.Getenv("PN_PRW_S3_REGION")
-	s3AccessKey := os.Getenv("PN_PRW_S3_ACCESS_KEY")
-	s3AccessSecret := os.Getenv("PN_PRW_S3_ACCESS_SECRET")
-	s3Bucket := os.Getenv("PN_PRW_S3_BUCKET")
+	// s3Endpoint := os.Getenv("PN_PRW_S3_ENDPOINT")
+	// s3Region := os.Getenv("PN_PRW_S3_REGION")
+	// s3AccessKey := os.Getenv("PN_PRW_S3_ACCESS_KEY")
+	// s3AccessSecret := os.Getenv("PN_PRW_S3_ACCESS_SECRET")
+	// s3Bucket := os.Getenv("PN_PRW_S3_BUCKET")
 
 	if strings.TrimSpace(postgresURI) == "" {
 		globals.Logger.Error("PN_PRW_POSTGRES_URI environment variable not set")
@@ -100,18 +100,18 @@ func init() {
 		os.Exit(0)
 	}
 
-	if strings.TrimSpace(hppServerPort) == "" {
-		globals.Logger.Error("PN_PRW_HPP_SERVER_PORT environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(hppServerPort) == "" {
+	// 	globals.Logger.Error("PN_PRW_HPP_SERVER_PORT environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	if port, err := strconv.Atoi(hppServerPort); err != nil {
-		globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
-		os.Exit(0)
-	} else if port < 0 || port > 65535 {
-		globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
-		os.Exit(0)
-	}
+	// if port, err := strconv.Atoi(hppServerPort); err != nil {
+	// 	globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
+	// 	os.Exit(0)
+	// } else if port < 0 || port > 65535 {
+	// 	globals.Logger.Errorf("PN_PRW_HPP_SERVER_PORT is not a valid port. Expected 0-65535, got %s", hppServerPort)
+	// 	os.Exit(0)
+	// }
 
 	if strings.TrimSpace(accountGRPCHost) == "" {
 		globals.Logger.Error("PN_PRW_ACCOUNT_GRPC_HOST environment variable not set")
@@ -179,55 +179,55 @@ func init() {
 		"X-API-Key", friendsGRPCAPIKey,
 	)
 
-	if strings.TrimSpace(s3Endpoint) == "" {
-		globals.Logger.Error("PN_PRW_S3_ENDPOINT environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(s3Endpoint) == "" {
+	// 	globals.Logger.Error("PN_PRW_S3_ENDPOINT environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	if strings.TrimSpace(s3Region) == "" {
-		globals.Logger.Error("PN_PRW_S3_REGION environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(s3Region) == "" {
+	// 	globals.Logger.Error("PN_PRW_S3_REGION environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	if strings.TrimSpace(s3AccessKey) == "" {
-		globals.Logger.Error("PN_PRW_S3_ACCESS_KEY environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(s3AccessKey) == "" {
+	// 	globals.Logger.Error("PN_PRW_S3_ACCESS_KEY environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	if strings.TrimSpace(s3AccessSecret) == "" {
-		globals.Logger.Error("PN_PRW_S3_ACCESS_SECRET environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(s3AccessSecret) == "" {
+	// 	globals.Logger.Error("PN_PRW_S3_ACCESS_SECRET environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	if strings.TrimSpace(s3Bucket) == "" {
-		globals.Logger.Error("PN_PRW_S3_BUCKET environment variable not set")
-		os.Exit(0)
-	}
+	// if strings.TrimSpace(s3Bucket) == "" {
+	// 	globals.Logger.Error("PN_PRW_S3_BUCKET environment variable not set")
+	// 	os.Exit(0)
+	// }
 
-	staticCredentials := credentials.NewStaticCredentialsProvider(s3AccessKey, s3AccessSecret, "")
+	// staticCredentials := credentials.NewStaticCredentialsProvider(s3AccessKey, s3AccessSecret, "")
 
-	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: s3Endpoint,
-			SigningRegion: s3Region,
-		}, nil
-	})
+	// endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+	// 	return aws.Endpoint{
+	// 		URL: s3Endpoint,
+	// 		SigningRegion: s3Region,
+	// 	}, nil
+	// })
 
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion(s3Region),
-		config.WithCredentialsProvider(staticCredentials),
-		config.WithEndpointResolverWithOptions(endpointResolver),
-	)
+	// cfg, err := config.LoadDefaultConfig(
+	// 	context.TODO(),
+	// 	config.WithRegion(s3Region),
+	// 	config.WithCredentialsProvider(staticCredentials),
+	// 	config.WithEndpointResolverWithOptions(endpointResolver),
+	// )
 
-	if err != nil {
-		globals.Logger.Criticalf("Failed to create S3 config: %v", err)
-		os.Exit(0)
-	}
+	// if err != nil {
+	// 	globals.Logger.Criticalf("Failed to create S3 config: %v", err)
+	// 	os.Exit(0)
+	// }
 
-	globals.S3Client = s3.NewFromConfig(cfg)
-	globals.S3PresignClient = s3.NewPresignClient(globals.S3Client)
-	globals.S3PresignPostClient = globals.NewPresignClient(cfg)
+	// globals.S3Client = s3.NewFromConfig(cfg)
+	// globals.S3PresignClient = s3.NewPresignClient(globals.S3Client)
+	// globals.S3PresignPostClient = globals.NewPresignClient(cfg)
 
 	database.ConnectPostgres()
 }
