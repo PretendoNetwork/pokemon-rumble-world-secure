@@ -9,12 +9,12 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	wg.Add(3)
+	wg.Add(2)
 
 	// TODO - Add gRPC server
 	go nex.StartAuthenticationServer()
 	go nex.StartSecureServer()
-	go nex.StartHPPServer()
+	// go nex.StartHPPServer()
 
 	wg.Wait()
 }

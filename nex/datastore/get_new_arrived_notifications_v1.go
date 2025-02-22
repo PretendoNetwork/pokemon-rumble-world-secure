@@ -4,35 +4,35 @@ import (
 	"github.com/PretendoNetwork/pokemon-rumble-world/database"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	"github.com/PretendoNetwork/nex-go/v2/types"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 )
 
-func GetNewArrivedNotificationsV1(err error, client *nex.Client, callID uint32, param *datastore_types.DataStoreGetNewArrivedNotificationsParam) {
-	rmcResponse := nex.NewRMCResponse(0, callID)
-
+func GetNewArrivedNotificationsV1(err error, packet nex.PacketInterface, callID uint32, param datastore_types.DataStoreGetNewArrivedNotificationsParam) (*nex.RMCMessage, *nex.Error) {
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-	} else {
-		pResult := database.GetNotificationsByPIDAndParam(client.PID(), param)
-
-		rmcResponseStream := nex.NewStreamOut(globals.HPPServer)
-
-		rmcResponseStream.WriteListStructure(pResult)
-		rmcResponseStream.WriteBool(false) // pHasNext. TODO - Handle this
-
-		rmcResponseBody := rmcResponseStream.Bytes()
-
-		rmcResponse.SetSuccess(datastore.MethodGetNewArrivedNotificationsV1, rmcResponseBody)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
 	}
 
-	rmcResponseBytes := rmcResponse.Bytes()
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
 
-	responsePacket, _ := nex.NewHPPPacket(client, nil)
+	pResult := database.GetNotificationsByPIDAndParam(uint32(connection.PID()), param)
+	pHasNext := types.NewBool(false) // TODO - Handle this
 
-	responsePacket.SetPayload(rmcResponseBytes)
+	rmcResponseStream := nex.NewByteStreamOut(globals.HPPServer.LibraryVersions(), globals.HPPServer.ByteStreamSettings())
 
-	globals.HPPServer.Send(responsePacket)
+	pResult.WriteTo(rmcResponseStream)
+	pHasNext.WriteTo(rmcResponseStream)
+
+	rmcResponseBody := rmcResponseStream.Bytes()
+
+	rmcResponse := nex.NewRMCSuccess(endpoint, rmcResponseBody)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodGetNewArrivedNotificationsV1
+	rmcResponse.CallID = callID
+
+	return rmcResponse, nil
 }

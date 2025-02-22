@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2/types"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 	"github.com/lib/pq"
 )
 
-func GetNotificationMetasByDataIDs(dataIDs []uint32) []*datastore_types.DataStoreSpecificMetaInfoV1 {
-	notificationMetas := make([]*datastore_types.DataStoreSpecificMetaInfoV1, 0, len(dataIDs))
+func GetNotificationMetasByDataIDs(dataIDs []uint32) types.List[datastore_types.DataStoreSpecificMetaInfoV1] {
+	var notificationMetas types.List[datastore_types.DataStoreSpecificMetaInfoV1] = make([]datastore_types.DataStoreSpecificMetaInfoV1, 0, len(dataIDs))
 
 	rows, err := Postgres.Query(`
 		SELECT
@@ -49,7 +50,7 @@ func GetNotificationMetasByDataIDs(dataIDs []uint32) []*datastore_types.DataStor
 				continue
 			}
 
-			notificationMeta.Size = uint32(size)
+			notificationMeta.Size = types.NewUInt32(uint32(size))
 
 			notificationMetas = append(notificationMetas, notificationMeta)
 		}

@@ -8,73 +8,62 @@ import (
 
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 
-	"github.com/PretendoNetwork/nex-go"
-	"github.com/PretendoNetwork/nex-protocols-go/datastore"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2"
+	"github.com/PretendoNetwork/nex-go/v2/types"
+	datastore "github.com/PretendoNetwork/nex-protocols-go/v2/datastore"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func PrepareGetObjectV1(err error, client *nex.Client, callID uint32, param *datastore_types.DataStorePrepareGetParamV1) {
-	rmcResponse := nex.NewRMCResponse(0, callID)
+func PrepareGetObjectV1(err error, packet nex.PacketInterface, callID uint32, param datastore_types.DataStorePrepareGetParamV1) (*nex.RMCMessage, *nex.Error) {
+	if err != nil {
+		globals.Logger.Error(err.Error())
+		return nil, nex.NewError(nex.ResultCodes.DataStore.InvalidArgument, err.Error())
+	}
+
+	connection := packet.Sender()
+	endpoint := connection.Endpoint()
+
+	bucket := os.Getenv("PN_PRW_S3_BUCKET")
+	key := fmt.Sprintf("data/%011d", param.DataID)
+
+	var size uint64
+	size, err = globals.S3ObjectSize(bucket, key)
+	if err != nil {
+		globals.Logger.Error(err.Error())
+		return nil, nex.NewError(nex.ResultCodes.DataStore.Unknown, err.Error())
+	}
+
+	pReqGetInfo := datastore_types.NewDataStoreReqGetInfoV1()
+	pReqGetInfo.Size = types.NewUInt32(uint32(size))
+
+	var request *v4.PresignedHTTPRequest
+	request, err = globals.S3PresignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = time.Duration(15 * int64(time.Minute))
+	})
 
 	if err != nil {
 		globals.Logger.Error(err.Error())
-		rmcResponse.SetError(nex.Errors.DataStore.Unknown)
+		return nil, nex.NewError(nex.ResultCodes.DataStore.Unknown, err.Error())
 	}
 
-	var pReqGetInfo *datastore_types.DataStoreReqGetInfoV1
-	var bucket, key string
-	var sizeErr error
-	if err == nil {
-		bucket = os.Getenv("PN_PRW_S3_BUCKET")
-		key = fmt.Sprintf("data/%011d", param.DataID)
+	pReqGetInfo.URL = types.NewString(request.URL)
 
-		var size uint64
-		size, sizeErr = globals.S3ObjectSize(bucket, key)
-		if sizeErr != nil {
-			globals.Logger.Error(sizeErr.Error())
-			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-		} else {
-			pReqGetInfo = datastore_types.NewDataStoreReqGetInfoV1()
-			pReqGetInfo.Size = uint32(size)
-		}
-	}
+	rmcResponseStream := nex.NewByteStreamOut(globals.HPPServer.LibraryVersions(), globals.HPPServer.ByteStreamSettings())
 
-	var presignGetErr error
-	if err == nil && sizeErr == nil {
-		var request *v4.PresignedHTTPRequest
-		request, presignGetErr = globals.S3PresignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-		}, func(opts *s3.PresignOptions) {
-			opts.Expires = time.Duration(15 * int64(time.Minute))
-		})
+	pReqGetInfo.WriteTo(rmcResponseStream)
 
-		if presignGetErr != nil {
-			globals.Logger.Error(presignGetErr.Error())
-			rmcResponse.SetError(nex.Errors.DataStore.Unknown)
-		} else {
-			pReqGetInfo.URL = request.URL
-		}
-	}
+	rmcResponseBody := rmcResponseStream.Bytes()
 
-	if err == nil && sizeErr == nil && presignGetErr == nil {
-		rmcResponseStream := nex.NewStreamOut(globals.HPPServer)
+	rmcResponse := nex.NewRMCSuccess(endpoint, rmcResponseBody)
+	rmcResponse.ProtocolID = datastore.ProtocolID
+	rmcResponse.MethodID = datastore.MethodPrepareGetObjectV1
+	rmcResponse.CallID = callID
 
-		rmcResponseStream.WriteStructure(pReqGetInfo)
-
-		rmcResponseBody := rmcResponseStream.Bytes()
-
-		rmcResponse.SetSuccess(datastore.MethodPrepareGetObjectV1, rmcResponseBody)
-	}
-
-	rmcResponseBytes := rmcResponse.Bytes()
-
-	responsePacket, _ := nex.NewHPPPacket(client, nil)
-
-	responsePacket.SetPayload(rmcResponseBytes)
-
-	globals.HPPServer.Send(responsePacket)
+	return rmcResponse, nil
 }

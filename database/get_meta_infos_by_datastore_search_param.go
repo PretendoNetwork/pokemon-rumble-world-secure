@@ -4,14 +4,14 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/PretendoNetwork/nex-go"
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	nex_types "github.com/PretendoNetwork/nex-go/v2/types"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 	"github.com/PretendoNetwork/pokemon-rumble-world/types"
 	"github.com/lib/pq"
 )
 
-func GetMetaInfosByDataStoreSearchParam(param *datastore_types.DataStoreSearchParam) []*types.MetaBinary {
+func GetMetaInfosByDataStoreSearchParam(param datastore_types.DataStoreSearchParam) []*types.MetaBinary {
 	metaBinaries := make([]*types.MetaBinary, 0, param.ResultRange.Length)
 
 	rows, err := Postgres.Query(`
@@ -43,10 +43,10 @@ func GetMetaInfosByDataStoreSearchParam(param *datastore_types.DataStoreSearchPa
 	for rows.Next() {
 		metaBinary := types.NewMetaBinary()
 
-		metaBinary.CreationTime = nex.NewDateTime(0)
-		metaBinary.UpdatedTime = nex.NewDateTime(0)
-		metaBinary.ReferredTime = nex.NewDateTime(0)
-		metaBinary.ExpireTime = nex.NewDateTime(0)
+		metaBinary.CreationTime = nex_types.NewDateTime(0)
+		metaBinary.UpdatedTime = nex_types.NewDateTime(0)
+		metaBinary.ReferredTime = nex_types.NewDateTime(0)
+		metaBinary.ExpireTime = nex_types.NewDateTime(0)
 
 		var creationTimestamp int64
 		var updatedTimestamp int64
@@ -76,10 +76,10 @@ func GetMetaInfosByDataStoreSearchParam(param *datastore_types.DataStoreSearchPa
 		}
 
 		if err == nil {
-			_ = metaBinary.CreationTime.FromTimestamp(time.Unix(creationTimestamp, 0))
-			_ = metaBinary.UpdatedTime.FromTimestamp(time.Unix(updatedTimestamp, 0))
-			_ = metaBinary.ReferredTime.FromTimestamp(time.Unix(referredTimestamp, 0))
-			_ = metaBinary.ExpireTime.FromTimestamp(time.Unix(expireTimestamp, 0))
+			metaBinary.CreationTime.FromTimestamp(time.Unix(creationTimestamp, 0))
+			metaBinary.UpdatedTime.FromTimestamp(time.Unix(updatedTimestamp, 0))
+			metaBinary.ReferredTime.FromTimestamp(time.Unix(referredTimestamp, 0))
+			metaBinary.ExpireTime.FromTimestamp(time.Unix(expireTimestamp, 0))
 		}
 
 		metaBinaries = append(metaBinaries, metaBinary)

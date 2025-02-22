@@ -3,14 +3,19 @@ package database
 import (
 	"time"
 
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/lib/pq"
 )
 
-func UpdateMetaBinaryByDataStoreChangeMetaParam(dataStoreChangeMetaParam *datastore_types.DataStoreChangeMetaParam) error {
+func UpdateMetaBinaryByDataStoreChangeMetaParam(dataStoreChangeMetaParam datastore_types.DataStoreChangeMetaParam) error {
 	// TODO - Check DataStoreChangeMetaParam flags for changes
 
 	now := time.Now().Unix()
+
+	tags := make([]string, len(dataStoreChangeMetaParam.Tags))
+	for i, tag := range dataStoreChangeMetaParam.Tags {
+		tags[i] = string(tag)
+	}
 
 	_, err := Postgres.Exec(`
 		UPDATE meta_binaries SET (
@@ -25,7 +30,7 @@ func UpdateMetaBinaryByDataStoreChangeMetaParam(dataStoreChangeMetaParam *datast
 		dataStoreChangeMetaParam.DataType,
 		dataStoreChangeMetaParam.MetaBinary,
 		dataStoreChangeMetaParam.Period,
-		pq.Array(dataStoreChangeMetaParam.Tags),
+		pq.Array(tags),
 		now,
 		uint32(dataStoreChangeMetaParam.DataID),
 	)

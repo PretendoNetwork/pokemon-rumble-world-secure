@@ -46,5 +46,5 @@ func S3ObjectSize(bucket, key string) (uint64, error) {
 		return 0, err
 	}
 
-	return uint64(res.ContentLength), nil
+	return uint64(*res.ContentLength), nil
 }

@@ -3,12 +3,13 @@ package database
 import (
 	"database/sql"
 
-	datastore_types "github.com/PretendoNetwork/nex-protocols-go/datastore/types"
+	"github.com/PretendoNetwork/nex-go/v2/types"
+	datastore_types "github.com/PretendoNetwork/nex-protocols-go/v2/datastore/types"
 	"github.com/PretendoNetwork/pokemon-rumble-world/globals"
 )
 
-func GetNotificationsByPIDAndParam(pid uint32, param *datastore_types.DataStoreGetNewArrivedNotificationsParam) []*datastore_types.DataStoreNotificationV1 {
-	notifications := make([]*datastore_types.DataStoreNotificationV1, 0, param.Limit)
+func GetNotificationsByPIDAndParam(pid uint32, param datastore_types.DataStoreGetNewArrivedNotificationsParam) types.List[datastore_types.DataStoreNotificationV1] {
+	var notifications types.List[datastore_types.DataStoreNotificationV1] = make([]datastore_types.DataStoreNotificationV1, 0, param.Limit)
 
 	rows, err := Postgres.Query(`
 		SELECT
@@ -38,7 +39,7 @@ func GetNotificationsByPIDAndParam(pid uint32, param *datastore_types.DataStoreG
 		if err == nil {
 			// * Cleanup previous notifications already read
 			if param.LastNotificationID == notification.NotificationID {
-				notifications = make([]*datastore_types.DataStoreNotificationV1, 0, param.Limit)
+				notifications = make([]datastore_types.DataStoreNotificationV1, 0, param.Limit)
 				continue
 			}
 
